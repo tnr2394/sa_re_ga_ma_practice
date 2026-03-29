@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sargam Practice App (V1)</title>
+  <style>
+    :root {
+      --bg-top: #fff8eb;
+      --bg-bottom: #f2fbff;
+      --text: #162231;
+      --muted: #5a6778;
+      --surface: #ffffff;
+      --border: #d8e3ef;
+      --primary: #0c7fd4;
+      --success: #17a55d;
+      --warning: #e29b0d;
+      --off: #e26a2d;
+      --meter-bg: #ebf1f8;
+      --meter-target: #8fa1b4;
+      --glow: rgba(23, 165, 93, 0.35);
+      --shadow: 0 18px 42px rgba(22, 34, 49, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, #ffffff 0%, rgba(255, 255, 255, 0) 36%),
+        linear-gradient(150deg, var(--bg-top), var(--bg-bottom));
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: min(460px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+      animation: rise-in 500ms ease both;
+    }
+
+    .headline {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.8vw, 1.8rem);
+      letter-spacing: 0.02em;
+      text-align: center;
+    }
+
+    .subhead {
+      margin: 8px 0 18px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.98rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select,
+    button {
+      border-radius: 10px;
+      border: 1px solid #c6d3e0;
+      min-height: 42px;
+      font-size: 0.98rem;
+      font-family: inherit;
+    }
+
+    select {
+      width: 100%;
+      padding: 0 12px;
+      background: #f8fbff;
+      color: var(--text);
+    }
+
+    .mic-btn {
+      padding: 0 14px;
+      border: none;
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .mic-btn:hover {
+      filter: brightness(1.05);
+    }
+
+    .mic-btn:active {
+      transform: translateY(1px);
+    }
+
+    .mic-btn.listening {
+      background: var(--success);
+    }
+
+    .mic-btn.denied {
+      background: #d13d3d;
+    }
+
+    .assist-btn {
+      background: #f7fbff;
+      color: #1d2d42;
+      border: 1px solid #c6d3e0;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .assist-btn:hover {
+      filter: brightness(1.02);
+    }
+
+    .assist-btn:active {
+      transform: translateY(1px);
+    }
+
+    .assist-btn.busy {
+      background: #eaf6ff;
+      border-color: #8cc4f2;
+      color: #105182;
+    }
+
+    .status-line {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--muted);
+      min-height: 1.3em;
+      margin-bottom: 4px;
+    }
+
+    .tip-line {
+      text-align: center;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .swara {
+      text-align: center;
+      font-size: clamp(3rem, 10vw, 4.1rem);
+      font-weight: 800;
+      line-height: 1;
+      margin: 2px 0 8px;
+      min-height: 1.1em;
+    }
+
+    .feedback {
+      text-align: center;
+      font-size: 1rem;
+      min-height: 1.3em;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .meter-wrap {
+      display: grid;
+      justify-items: center;
+      margin-bottom: 18px;
+    }
+
+    .meter {
+      width: 72px;
+      height: 270px;
+      border-radius: 40px;
+      background:
+        linear-gradient(
+          to top,
+          #f8d9c8 0%,
+          #fff8df 35%,
+          #e9f8ec 50%,
+          #fff8df 65%,
+          #f8d9c8 100%
+        );
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+    }
+
+    .meter-target {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 46px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-top: 2px solid var(--meter-target);
+      border-bottom: 2px solid var(--meter-target);
+      background: rgba(0, 0, 0, 0.03);
+      transition: box-shadow 220ms ease, background-color 220ms ease;
+      pointer-events: none;
+    }
+
+    .meter-target.glow {
+      box-shadow: 0 0 24px 10px var(--glow);
+      background: rgba(23, 165, 93, 0.11);
+      border-top-color: var(--success);
+      border-bottom-color: var(--success);
+    }
+
+    .indicator {
+      position: absolute;
+      left: 50%;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      transform: translate(-50%, 50%);
+      bottom: 50%;
+      background: #1b2b3b;
+      box-shadow: 0 4px 12px rgba(18, 28, 41, 0.3);
+      transition: bottom 90ms linear, background-color 180ms ease;
+    }
+
+    .meter-labels {
+      width: 120px;
+      margin-top: 6px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.83rem;
+    }
+
+    .reference {
+      margin-top: 10px;
+    }
+
+    .reference-title {
+      margin: 0 0 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .note-btn {
+      min-height: 38px;
+      background: #f5f9ff;
+      color: #1f2f43;
+      border: 1px solid #cad8e7;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 120ms ease, transform 120ms ease;
+    }
+
+    .note-btn:hover {
+      filter: brightness(1.04);
+    }
+
+    .note-btn:active {
+      transform: translateY(1px);
+    }
+
+    @media (max-width: 480px) {
+      .action-buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @keyframes rise-in {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1 class="headline">Sargam Practice</h1>
+    <p class="subhead">Set Sa, sing, and tune yourself in real time.</p>
+
+    <section class="controls" aria-label="Primary controls">
+      <div>
+        <label for="sa-select">Base Sa</label>
+        <select id="sa-select"></select>
+      </div>
+      <div class="action-buttons">
+        <button id="mic-btn" class="mic-btn" type="button">Start Listening</button>
+        <button id="find-sa-btn" class="assist-btn" type="button">Find My Sa</button>
+        <button id="set-current-sa-btn" class="assist-btn" type="button">Use Current as Sa</button>
+      </div>
+    </section>
+
+    <p class="tip-line">Tip: Tap Find My Sa, sing one comfortable steady note for 2-3 seconds.</p>
+    <p id="status-line" class="status-line">Press Start or Find My Sa to begin.</p>
+    <div id="swara-label" class="swara">-</div>
+    <div id="feedback-label" class="feedback">Waiting</div>
+
+    <section class="meter-wrap" aria-label="Pitch meter">
+      <div class="meter">
+        <div id="meter-target" class="meter-target"></div>
+        <div id="meter-indicator" class="indicator"></div>
+      </div>
+      <div class="meter-labels">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </section>
+
+    <section class="reference" aria-label="Reference notes">
+      <p class="reference-title">Reference Notes</p>
+      <div class="note-grid">
+        <button class="note-btn" type="button" data-offset="0">Sa</button>
+        <button class="note-btn" type="button" data-offset="2">Re</button>
+        <button class="note-btn" type="button" data-offset="4">Ga</button>
+        <button class="note-btn" type="button" data-offset="5">Ma</button>
+        <button class="note-btn" type="button" data-offset="7">Pa</button>
+        <button class="note-btn" type="button" data-offset="9">Dha</button>
+        <button class="note-btn" type="button" data-offset="11">Ni</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { YIN } from "https://esm.sh/pitchfinder@2.3.0";
+
+    const SHUDDH_SWARAS = [
+      { name: "Sa", offset: 0 },
+      { name: "Re", offset: 2 },
+      { name: "Ga", offset: 4 },
+      { name: "Ma", offset: 5 },
+      { name: "Pa", offset: 7 },
+      { name: "Dha", offset: 9 },
+      { name: "Ni", offset: 11 }
+    ];
+
+    const ON_PITCH_CENTS = 15;
+    const WARN_CENTS = 50;
+    const STABILITY_THRESHOLD_MS = 1500;
+    const VOICE_ON_GATE = 0.0045;
+    const VOICE_OFF_GATE = 0.0032;
+    const VOICE_HANGOVER_MS = 280;
+    const SMOOTHING_WINDOW = 5;
+    const REFERENCE_DURATION_SEC = 4.5;
+    const REFERENCE_ATTACK_SEC = 0.03;
+    const REFERENCE_RELEASE_SEC = 0.2;
+    const REFERENCE_LEVEL = 0.24;
+    const NO_PITCH_GRACE_MS = 550;
+    const SILENCE_RESET_MS = 900;
+    const CALIBRATION_MS = 2400;
+    const CALIBRATION_MIN_SAMPLES = 18;
+    const CALIBRATION_MIN_HZ = 70;
+    const CALIBRATION_MAX_HZ = 900;
+    const SA_MIDI_MIN = 45; // A2
+    const SA_MIDI_MAX = 72; // C5
+    const DEFAULT_SA_NOTE = "C#4";
+
+    const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const INDIAN_KEYS = {
+      "C4": "Safed 1",
+      "C#4": "Kali 1",
+      "D4": "Safed 2",
+      "D#4": "Kali 2",
+      "E4": "Safed 3",
+      "F4": "Safed 4",
+      "F#4": "Kali 3",
+      "G4": "Safed 5",
+      "G#4": "Kali 4",
+      "A4": "Safed 6",
+      "A#4": "Kali 5",
+      "B4": "Safed 7"
+    };
+
+    let audioContext = null;
+    let analyser = null;
+    let detectPitch = null;
+    let isListening = false;
+    let baseSaFreq = 277.18;
+    let onPitchStartTime = null;
+    let rafId = null;
+    let isSaCalibrating = false;
+    let calibrationStartTime = 0;
+    let calibrationSamples = [];
+    let recentFrequencies = [];
+    let lastStableFrequency = null;
+    let activeReference = null;
+    let lastPitchAt = 0;
+    let lastVoiceAt = 0;
+    let isVoiceActive = false;
+    let saOptions = [];
+    const saOptionsByValue = new Map();
+
+    const micBtn = document.getElementById("mic-btn");
+    const findSaBtn = document.getElementById("find-sa-btn");
+    const setCurrentSaBtn = document.getElementById("set-current-sa-btn");
+    const saSelect = document.getElementById("sa-select");
+    const statusLine = document.getElementById("status-line");
+    const swaraLabel = document.getElementById("swara-label");
+    const feedbackLabel = document.getElementById("feedback-label");
+    const meterIndicator = document.getElementById("meter-indicator");
+    const meterTarget = document.getElementById("meter-target");
+    const referenceButtons = document.querySelectorAll(".note-btn");
+
+    function midiToFrequency(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function midiToNoteName(midi) {
+      const noteName = NOTE_NAMES[midi % 12];
+      const octave = Math.floor(midi / 12) - 1;
+      return `${noteName}${octave}`;
+    }
+
+    function formatSaLabel(noteName, frequency) {
+      const alias = INDIAN_KEYS[noteName];
+      if (alias) {
+        return `${noteName} (${alias}) - ${frequency.toFixed(2)} Hz`;
+      }
+      return `${noteName} - ${frequency.toFixed(2)} Hz`;
+    }
+
+    function populateSaOptions() {
+      saSelect.innerHTML = "";
+      saOptions = [];
+      saOptionsByValue.clear();
+
+      for (let midi = SA_MIDI_MIN; midi <= SA_MIDI_MAX; midi += 1) {
+        const frequency = midiToFrequency(midi);
+        const noteName = midiToNoteName(midi);
+        const value = frequency.toFixed(4);
+        const option = {
+          value,
+          noteName,
+          frequency,
+          label: formatSaLabel(noteName, frequency)
+        };
+        saOptions.push(option);
+        saOptionsByValue.set(value, option);
+
+        const optionEl = document.createElement("option");
+        optionEl.value = option.value;
+        optionEl.textContent = option.label;
+        if (noteName === DEFAULT_SA_NOTE) {
+          optionEl.selected = true;
+        }
+        saSelect.appendChild(optionEl);
+      }
+
+      const selected = saOptionsByValue.get(saSelect.value);
+      if (selected) {
+        baseSaFreq = selected.frequency;
+      }
+    }
+
+    function getSelectedSaOption() {
+      return saOptionsByValue.get(saSelect.value) || saOptions[0];
+    }
+
+    function centsBetween(frequencyA, frequencyB) {
+      return 1200 * Math.log2(frequencyA / frequencyB);
+    }
+
+    function nearestSaOption(targetFrequency) {
+      let best = saOptions[0];
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      for (const option of saOptions) {
+        const distance = Math.abs(centsBetween(targetFrequency, option.frequency));
+        if (distance < bestDistance) {
+          best = option;
+          bestDistance = distance;
+        }
+      }
+
+      return best;
+    }
+
+    function trimmedMedian(values) {
+      if (!values.length) {
+        return null;
+      }
+      const sorted = [...values].sort((a, b) => a - b);
+      const trimCount = Math.floor(sorted.length * 0.2);
+      const trimmed = sorted.slice(trimCount, sorted.length - trimCount);
+      const sample = trimmed.length >= 3 ? trimmed : sorted;
+      const middle = Math.floor(sample.length / 2);
+      if (sample.length % 2 === 0) {
+        return (sample[middle - 1] + sample[middle]) / 2;
+      }
+      return sample[middle];
+    }
+
+    function median(values) {
+      if (!values.length) {
+        return null;
+      }
+      const sorted = [...values].sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      if (sorted.length % 2 === 0) {
+        return (sorted[middle - 1] + sorted[middle]) / 2;
+      }
+      return sorted[middle];
+    }
+
+    function setStatus(text) {
+      statusLine.textContent = text;
+    }
+
+    function resetCalibrationButton() {
+      findSaBtn.disabled = false;
+      findSaBtn.classList.remove("busy");
+      findSaBtn.textContent = "Find My Sa";
+    }
+
+    function applySaFromFrequency(targetFrequency, sourceLabel) {
+      const suggested = nearestSaOption(targetFrequency);
+      saSelect.value = suggested.value;
+      baseSaFreq = suggested.frequency;
+      setStatus(`${sourceLabel}: ${suggested.noteName} (${suggested.frequency.toFixed(2)} Hz).`);
+      resetLiveFeedback(`Base Sa set to ${suggested.noteName}.`);
+    }
+
+    async function beginSaCalibration() {
+      if (isSaCalibrating) {
+        return;
+      }
+
+      const started = await startListening();
+      if (!started && !isListening) {
+        return;
+      }
+
+      isSaCalibrating = true;
+      calibrationStartTime = performance.now();
+      calibrationSamples = [];
+      findSaBtn.disabled = true;
+      findSaBtn.classList.add("busy");
+      findSaBtn.textContent = "Listening...";
+      setStatus("Finding Sa. Sing one comfortable steady note.");
+      feedbackLabel.textContent = "Calibrating...";
+      feedbackLabel.style.color = "var(--muted)";
+      meterTarget.classList.remove("glow");
+      onPitchStartTime = null;
+    }
+
+    function finishSaCalibration() {
+      isSaCalibrating = false;
+      resetCalibrationButton();
+
+      if (calibrationSamples.length < CALIBRATION_MIN_SAMPLES) {
+        setStatus("Could not detect clearly. Try Find My Sa again in a quieter room.");
+        feedbackLabel.textContent = "Not enough stable pitch data";
+        feedbackLabel.style.color = "var(--off)";
+        return;
+      }
+
+      const stableFrequency = trimmedMedian(calibrationSamples);
+      if (!stableFrequency) {
+        setStatus("Calibration failed. Please try again.");
+        feedbackLabel.textContent = "No valid pitch detected";
+        feedbackLabel.style.color = "var(--off)";
+        return;
+      }
+
+      const suggested = nearestSaOption(stableFrequency);
+      saSelect.value = suggested.value;
+      baseSaFreq = suggested.frequency;
+
+      const difference = centsBetween(stableFrequency, suggested.frequency);
+      const direction =
+        difference > 15 ? "a little high" :
+        difference < -15 ? "a little low" :
+        "very close";
+
+      setStatus(`Suggested Sa: ${suggested.noteName} (${suggested.frequency.toFixed(2)} Hz).`);
+      feedbackLabel.textContent = `Set to ${suggested.noteName}. Your note was ${direction}.`;
+      feedbackLabel.style.color = "var(--success)";
+      swaraLabel.textContent = "-";
+      meterIndicator.style.bottom = "50%";
+      meterIndicator.style.backgroundColor = "#1b2b3b";
+      meterTarget.classList.remove("glow");
+      onPitchStartTime = null;
+    }
+
+    function useCurrentNoteAsSa() {
+      if (!isListening) {
+        setStatus("Start listening first, then sing and tap Use Current as Sa.");
+        return;
+      }
+      if (!lastStableFrequency) {
+        setStatus("No stable note detected yet. Sing a steady note and try again.");
+        return;
+      }
+      applySaFromFrequency(lastStableFrequency, "Sa set from current note");
+    }
+
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioContext;
+    }
+
+    async function startListening() {
+      if (isListening) {
+        return true;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true
+        });
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
+
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 4096;
+        analyser.smoothingTimeConstant = 0.2;
+
+        const source = ctx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        detectPitch = YIN({ sampleRate: ctx.sampleRate });
+        isListening = true;
+        micBtn.classList.remove("denied");
+        micBtn.classList.add("listening");
+        micBtn.textContent = "Listening";
+        setStatus("Mic active. Start singing.");
+        lastPitchAt = performance.now();
+        lastVoiceAt = lastPitchAt;
+        isVoiceActive = false;
+
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        tick();
+        return true;
+      } catch (error) {
+        isListening = false;
+        micBtn.classList.remove("listening");
+        micBtn.classList.add("denied");
+        micBtn.textContent = "Mic Blocked";
+        setStatus("Microphone access denied or unavailable.");
+        resetCalibrationButton();
+        console.error(error);
+        return false;
+      }
+    }
+
+    function tick() {
+      if (!isListening || !analyser || !detectPitch) {
+        return;
+      }
+
+      const now = performance.now();
+      const samples = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(samples);
+      const rms = Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+
+      if (!isVoiceActive && rms >= VOICE_ON_GATE) {
+        isVoiceActive = true;
+        lastVoiceAt = now;
+      } else if (isVoiceActive && rms >= VOICE_OFF_GATE) {
+        lastVoiceAt = now;
+      } else if (isVoiceActive && now - lastVoiceAt > VOICE_HANGOVER_MS) {
+        isVoiceActive = false;
+      }
+
+      if (isVoiceActive) {
+        const rawFrequency = detectPitch(samples);
+        if (rawFrequency && rawFrequency >= CALIBRATION_MIN_HZ && rawFrequency <= CALIBRATION_MAX_HZ) {
+          recentFrequencies.push(rawFrequency);
+          if (recentFrequencies.length > SMOOTHING_WINDOW) {
+            recentFrequencies.shift();
+          }
+
+          const smoothedFrequency = median(recentFrequencies) || rawFrequency;
+          lastStableFrequency = smoothedFrequency;
+          lastPitchAt = now;
+
+          if (isSaCalibrating) {
+            calibrationSamples.push(smoothedFrequency);
+          }
+          processPitch(smoothedFrequency);
+        } else {
+          if (now - lastPitchAt > NO_PITCH_GRACE_MS) {
+            showNoPitchHint();
+          }
+        }
+      } else {
+        if (now - lastVoiceAt > SILENCE_RESET_MS) {
+          resetLiveFeedback(isSaCalibrating ? "Calibrating..." : "Listening...");
+        }
+      }
+
+      if (isSaCalibrating && now - calibrationStartTime >= CALIBRATION_MS) {
+        finishSaCalibration();
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function processPitch(frequency) {
+      const exactSemitones = 12 * Math.log2(frequency / baseSaFreq);
+      const foldedSemitones = ((exactSemitones % 12) + 12) % 12;
+
+      let nearest = SHUDDH_SWARAS[0];
+      let centsDifference = Number.POSITIVE_INFINITY;
+
+      for (const swara of [...SHUDDH_SWARAS, { name: "Sa", offset: 12 }]) {
+        const diff = (foldedSemitones - swara.offset) * 100;
+        if (Math.abs(diff) < Math.abs(centsDifference)) {
+          centsDifference = diff;
+          nearest = swara;
+        }
+      }
+
+      const displayCents = Math.max(-WARN_CENTS, Math.min(WARN_CENTS, centsDifference));
+      renderPitch(nearest.name, centsDifference, displayCents);
+    }
+
+    function renderPitch(swaraName, centsRaw, centsDisplay) {
+      swaraLabel.textContent = swaraName;
+      if (!isSaCalibrating) {
+        setStatus("Mic active. Start singing.");
+      }
+
+      const bottomPercent = 50 + centsDisplay;
+      meterIndicator.style.bottom = `${bottomPercent}%`;
+
+      if (Math.abs(centsRaw) <= ON_PITCH_CENTS) {
+        feedbackLabel.textContent = "On Pitch";
+        feedbackLabel.style.color = "var(--success)";
+        meterIndicator.style.backgroundColor = "var(--success)";
+
+        if (!onPitchStartTime) {
+          onPitchStartTime = performance.now();
+        }
+        if (performance.now() - onPitchStartTime >= STABILITY_THRESHOLD_MS) {
+          meterTarget.classList.add("glow");
+        }
+        return;
+      }
+
+      onPitchStartTime = null;
+      meterTarget.classList.remove("glow");
+
+      if (Math.abs(centsRaw) > WARN_CENTS) {
+        feedbackLabel.textContent = centsRaw > 0 ? "High (Off Target)" : "Low (Off Target)";
+        feedbackLabel.style.color = "var(--off)";
+        meterIndicator.style.backgroundColor = "var(--off)";
+      } else {
+        feedbackLabel.textContent = centsRaw > 0 ? "High" : "Low";
+        feedbackLabel.style.color = "var(--warning)";
+        meterIndicator.style.backgroundColor = "var(--warning)";
+      }
+    }
+
+    function showNoPitchHint() {
+      onPitchStartTime = null;
+      meterTarget.classList.remove("glow");
+      if (isSaCalibrating) {
+        feedbackLabel.textContent = "Calibrating...";
+      } else {
+        feedbackLabel.textContent = "Hold a steady note...";
+      }
+      feedbackLabel.style.color = "var(--muted)";
+    }
+
+    function resetLiveFeedback(labelText) {
+      swaraLabel.textContent = "-";
+      feedbackLabel.textContent = labelText;
+      feedbackLabel.style.color = "var(--muted)";
+      meterIndicator.style.bottom = "50%";
+      meterIndicator.style.backgroundColor = "#1b2b3b";
+      meterTarget.classList.remove("glow");
+      onPitchStartTime = null;
+      recentFrequencies = [];
+    }
+
+    function getReferenceFrequency(offset) {
+      return baseSaFreq * Math.pow(2, offset / 12);
+    }
+
+    function stopActiveReference(ctx) {
+      if (!activeReference) {
+        return;
+      }
+
+      const { osc, gain } = activeReference;
+      const now = ctx.currentTime;
+
+      try {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + REFERENCE_RELEASE_SEC);
+        osc.stop(now + REFERENCE_RELEASE_SEC + 0.01);
+      } catch (error) {
+        console.error(error);
+      }
+
+      activeReference = null;
+    }
+
+    async function playReference(offset) {
+      const ctx = getAudioContext();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+
+      stopActiveReference(ctx);
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = getReferenceFrequency(offset);
+
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(REFERENCE_LEVEL, now + REFERENCE_ATTACK_SEC);
+      gain.gain.setValueAtTime(
+        REFERENCE_LEVEL,
+        now + Math.max(REFERENCE_ATTACK_SEC, REFERENCE_DURATION_SEC - REFERENCE_RELEASE_SEC)
+      );
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + REFERENCE_DURATION_SEC);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + REFERENCE_DURATION_SEC + 0.01);
+
+      activeReference = { osc, gain };
+      osc.onended = () => {
+        if (activeReference && activeReference.osc === osc) {
+          activeReference = null;
+        }
+      };
+    }
+
+    populateSaOptions();
+
+    micBtn.addEventListener("click", startListening);
+    findSaBtn.addEventListener("click", beginSaCalibration);
+    setCurrentSaBtn.addEventListener("click", useCurrentNoteAsSa);
+
+    saSelect.addEventListener("change", () => {
+      const selected = getSelectedSaOption();
+      baseSaFreq = selected.frequency;
+      setStatus(`Base Sa changed to ${selected.noteName}.`);
+      resetLiveFeedback("Sa changed. Sing to tune.");
+    });
+
+    referenceButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const offset = Number.parseInt(button.dataset.offset, 10);
+        playReference(offset).catch((error) => console.error(error));
+      });
+    });
+  </script>
+</body>
+</html>
