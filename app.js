@@ -116,14 +116,14 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
     let sessionStartAt = 0;
     let sessionElapsedMs = 0;
     let isSessionActive = false;
-    let sessionMode = "Free Sing";
+    let sessionMode = "Live Practice";
     let lastTrendRecordAt = 0;
     let trendStats = emptyTrendStats();
     let summaryHideTimer = null;
+    let isManualSaChooserOpen = false;
     let quickSteps = {
       mic: false,
-      sa: false,
-      challenge: false
+      sa: Boolean(settings.saValue)
     };
     let saOptions = [];
     const saOptionsByValue = new Map();
@@ -135,19 +135,28 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
     const referenceDurationInput = document.getElementById("ref-duration");
     const referenceDurationValue = document.getElementById("ref-duration-value");
     const saSelect = document.getElementById("sa-select");
+    const modeTabs = document.getElementById("mode-tabs");
     const modeButtons = document.querySelectorAll(".mode-btn");
     const modePill = document.getElementById("mode-pill");
     const tipLine = document.getElementById("tip-line");
+    const saInfoLine = document.getElementById("sa-info-line");
+    const guidedStage = document.getElementById("guided-stage");
+    const guidedTargetPill = document.getElementById("guided-target-pill");
+    const guidedCurrentPill = document.getElementById("guided-current-pill");
+    const guidedCurrentCard = document.querySelector(".guided-pill-current");
+    const guidedStepRow = document.getElementById("guided-step-row");
     const statusLine = document.getElementById("status-line");
     const swaraLabel = document.getElementById("swara-label");
     const feedbackLabel = document.getElementById("feedback-label");
     const meterIndicator = document.getElementById("meter-indicator");
     const meterTarget = document.getElementById("meter-target");
     const quickStartPanel = document.getElementById("quickstart-panel");
+    const quickStartLead = document.getElementById("quickstart-lead");
     const quickStartNote = document.getElementById("quickstart-note");
-    const quickMicBtn = document.getElementById("qs-mic-btn");
-    const quickSaBtn = document.getElementById("qs-sa-btn");
-    const quickChallengeBtn = document.getElementById("qs-challenge-btn");
+    const quickPrimaryBtn = document.getElementById("qs-primary-btn");
+    const quickSecondaryBtn = document.getElementById("qs-secondary-btn");
+    const actionButtons = document.getElementById("action-buttons");
+    const contextPanels = document.querySelector(".context-panels");
     const drillPanel = document.getElementById("drill-panel");
     const referenceButtons = document.querySelectorAll(".note-btn");
     const drillBtn = document.getElementById("drill-btn");
@@ -159,6 +168,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
     const challengeTarget = document.getElementById("challenge-target");
     const challengeTime = document.getElementById("challenge-time");
     const challengeFill = document.getElementById("challenge-fill");
+    const statsStrip = document.getElementById("stats-strip");
     const starsPill = document.getElementById("stars-pill");
     const streakPill = document.getElementById("streak-pill");
     const timePill = document.getElementById("time-pill");
@@ -166,6 +176,8 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
     const summaryPanel = document.getElementById("summary-panel");
     const summaryTitle = document.getElementById("summary-title");
     const summaryBody = document.getElementById("summary-body");
+    const settingsPanel = document.getElementById("settings-panel");
+    const referencePanel = document.getElementById("reference-panel");
     const pageBody = document.body;
 
     function midiToFrequency(midi) {
@@ -301,14 +313,125 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       tipLine.textContent = text;
     }
 
+    function isOnboardingActive() {
+      return !settings.onboarded;
+    }
+
+    function completeOnboarding() {
+      if (settings.onboarded) {
+        return;
+      }
+      settings.onboarded = true;
+      persistSettings();
+      isManualSaChooserOpen = false;
+      if (activeMode === "free") {
+        setActiveMode("drill");
+      }
+      setStatus("Your Sa is ready. Start with guided practice.");
+      updateQuickStartVisibility();
+      syncViewFlags();
+    }
+
+    function describeSaOffset(cents, contextLabel = "Detected note") {
+      const rounded = Math.round(Math.abs(cents));
+      if (Math.abs(cents) <= 3) {
+        return `${contextLabel} was very close to this keyboard key.`;
+      }
+      return `${contextLabel} was ${rounded} cents ${cents > 0 ? "high" : "low"}, so we snapped to this keyboard Sa.`;
+    }
+
+    function updateSaInfoLine(option = getSelectedSaOption(), detailText = "") {
+      if (!option) {
+        saInfoLine.textContent = "Keyboard Sa: --";
+        return;
+      }
+
+      const alias = INDIAN_KEYS[option.noteName];
+      const baseText = `Keyboard Sa: ${option.noteName}${alias ? ` (${alias})` : ""} at ${option.frequency.toFixed(2)} Hz.`;
+      saInfoLine.textContent = detailText ? `${baseText} ${detailText}` : baseText;
+    }
+
+    function buildGuidedStepRow() {
+      guidedStepRow.innerHTML = "";
+      for (const step of DRILL_SEQUENCE) {
+        const chip = document.createElement("span");
+        chip.className = "guided-step-chip";
+        chip.dataset.swara = step.name;
+        chip.textContent = step.name;
+        guidedStepRow.append(chip);
+      }
+    }
+
+    function getGuidedStepIndex() {
+      if (activeMode === "drill") {
+        return drillStepIndex;
+      }
+      if (activeMode === "challenge") {
+        return challengeStepIndex % DRILL_SEQUENCE.length;
+      }
+      return -1;
+    }
+
+    function getGuidedTargetStep() {
+      const index = getGuidedStepIndex();
+      if (index < 0) {
+        return null;
+      }
+      return DRILL_SEQUENCE[index] || null;
+    }
+
+    function renderGuidedStepRow(currentSwaraName = "") {
+      if (!guidedStepRow.children.length) {
+        buildGuidedStepRow();
+      }
+
+      const targetIndex = getGuidedStepIndex();
+      const completedCount = activeMode === "drill" && isDrillActive ? drillStepIndex : 0;
+
+      Array.from(guidedStepRow.children).forEach((chip, index) => {
+        const chipName = DRILL_SEQUENCE[index]?.name || "";
+        const isTarget = index === targetIndex;
+        const isCurrent = Boolean(currentSwaraName) && currentSwaraName === chipName;
+        const isDone = index < completedCount;
+
+        chip.classList.toggle("is-target", isTarget);
+        chip.classList.toggle("is-current", isCurrent);
+        chip.classList.toggle("is-done", isDone);
+        chip.classList.toggle("is-match", isTarget && isCurrent);
+      });
+    }
+
+    function updateGuidedStage(currentSwaraName = "", currentText = "") {
+      const showGuidedStage = !isOnboardingActive() && activeMode !== "free";
+      guidedStage.classList.toggle("hidden", !showGuidedStage);
+
+      if (!showGuidedStage) {
+        return;
+      }
+
+      const targetStep = getGuidedTargetStep() || DRILL_SEQUENCE[0];
+      const resolvedCurrentText =
+        currentText ||
+        currentSwaraName ||
+        (isSaCalibrating ? "Calibrating" : ((isDrillActive || isChallengeActive) ? "Listening" : "Ready"));
+      const isTargetMatched = Boolean(currentSwaraName) && currentSwaraName === targetStep.name;
+
+      guidedTargetPill.textContent = targetStep?.name || "-";
+      guidedCurrentPill.textContent = resolvedCurrentText;
+      guidedCurrentCard.classList.toggle("is-empty", !currentSwaraName);
+      guidedCurrentCard.classList.toggle("is-match", isTargetMatched);
+
+      renderGuidedStepRow(currentSwaraName);
+    }
+
     function modeLabelText(mode) {
       if (mode === "drill") {
-        return "Guided Drill Mode";
+        return "Guided Sargam";
       }
       if (mode === "challenge") {
-        return "60s Challenge Mode";
+        return "1-Minute Challenge";
       }
-      return "Free Sing Mode";
+      return "Live Practice";
     }
 
     function updateModePill() {
@@ -322,17 +445,33 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       micBtn.disabled = controlsLocked;
       findSaBtn.disabled = controlsLocked;
       setCurrentSaBtn.disabled = controlsLocked || !isListening || !lastStableFrequency;
+      setCurrentSaBtn.classList.toggle("hidden", !settings.onboarded || !isListening || !lastStableFrequency);
 
       saSelect.disabled = controlsLocked;
       difficultySelect.disabled = controlsLocked;
       referenceDurationInput.disabled = controlsLocked;
 
-      quickSaBtn.disabled = !quickSteps.mic;
-      quickChallengeBtn.disabled = !quickSteps.sa;
+      quickPrimaryBtn.disabled = isSaCalibrating;
+      quickSecondaryBtn.disabled = isStructuredModeActive || isSaCalibrating;
     }
 
     function syncViewFlags() {
+      const onboardingActive = isOnboardingActive();
+      const showGuidedPanels = !onboardingActive && activeMode !== "free";
+      const showSessionUi = !onboardingActive && (showGuidedPanels || isSessionActive || !summaryPanel.classList.contains("hidden"));
+
       pageBody.classList.toggle("is-challenge-active", isChallengeActive);
+      modePill.classList.toggle("hidden", onboardingActive);
+      modeTabs.classList.toggle("hidden", onboardingActive);
+      actionButtons.classList.toggle("hidden", onboardingActive);
+      contextPanels.classList.toggle("hidden", !showGuidedPanels);
+      statsStrip.classList.toggle("hidden", !showSessionUi);
+      coachTip.classList.toggle("hidden", !showSessionUi);
+      settingsPanel.classList.toggle("hidden", onboardingActive && !isManualSaChooserOpen);
+      referencePanel.classList.toggle("hidden", onboardingActive);
+      tipLine.classList.toggle("hidden", onboardingActive);
+      saInfoLine.classList.toggle("hidden", onboardingActive && !quickSteps.sa);
+      updateGuidedStage();
     }
 
     function clamp(value, min, max) {
@@ -479,42 +618,44 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
     }
 
     function refreshQuickStartButtons() {
-      quickMicBtn.classList.toggle("done", quickSteps.mic);
-      quickSaBtn.classList.toggle("done", quickSteps.sa);
-      quickChallengeBtn.classList.toggle("done", quickSteps.challenge);
-      quickMicBtn.textContent = quickSteps.mic ? "1. Mic Ready" : "1. Mic Access";
-      quickSaBtn.textContent = quickSteps.sa ? "2. Sa Ready" : "2. Find Sa";
-      quickChallengeBtn.textContent = quickSteps.challenge ? "3. Challenge Done" : "3. Try 60s";
-
-      if (!quickSteps.mic) {
-        quickStartNote.textContent = "Step 1: allow microphone access.";
-      } else if (!quickSteps.sa) {
-        quickStartNote.textContent = "Step 2: sing one steady note to detect your Sa.";
-      } else if (!quickSteps.challenge) {
-        quickStartNote.textContent = "Step 3: play one quick challenge run.";
+      if (!quickSteps.mic && !quickSteps.sa) {
+        quickStartLead.textContent = "We'll help you find your Sa in two easy steps.";
+        quickPrimaryBtn.textContent = "Start Listening";
+        quickSecondaryBtn.textContent = "Choose Sa Manually";
+        quickStartNote.textContent = "Step 1 of 2: allow microphone access.";
+      } else if (quickSteps.mic && !quickSteps.sa) {
+        quickStartLead.textContent = "Nice. Now sing one comfortable steady note.";
+        quickPrimaryBtn.textContent = "Find My Sa";
+        quickSecondaryBtn.textContent = "Choose Sa Manually";
+        quickStartNote.textContent = "Step 2 of 2: sing and hold one note until we detect your keyboard Sa.";
+      } else if (!quickSteps.mic && quickSteps.sa) {
+        quickStartLead.textContent = "Your Sa is set. One more step and you're ready.";
+        quickPrimaryBtn.textContent = "Start Listening";
+        quickSecondaryBtn.textContent = "Adjust Sa";
+        quickStartNote.textContent = "Turn on the mic, then start practicing with your chosen keyboard Sa.";
       } else {
-        quickStartNote.textContent = "All set. Great start.";
+        quickStartLead.textContent = "You're ready to practice.";
+        quickPrimaryBtn.textContent = "Start Guided Practice";
+        quickSecondaryBtn.textContent = "Adjust Sa";
+        quickStartNote.textContent = "Your Sa is ready. Start with guided practice or adjust it if needed.";
       }
 
       syncControlState();
     }
 
     function updateQuickStartVisibility() {
-      if (settings.onboarded) {
-        quickStartPanel.classList.add("hidden");
-        return;
+      quickStartPanel.classList.toggle("hidden", !isOnboardingActive());
+      if (isOnboardingActive()) {
+        refreshQuickStartButtons();
       }
-      quickStartPanel.classList.remove("hidden");
-      refreshQuickStartButtons();
+      syncViewFlags();
     }
 
     function markQuickStep(step, done = true) {
       quickSteps[step] = done;
       refreshQuickStartButtons();
-      if (quickSteps.mic && quickSteps.sa && quickSteps.challenge) {
-        settings.onboarded = true;
-        persistSettings();
-        quickStartPanel.classList.add("hidden");
+      if (quickSteps.mic && quickSteps.sa) {
+        completeOnboarding();
       }
     }
 
@@ -540,21 +681,22 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       }
     }
 
-    function setBaseSaFromOption(option, sourceLabel) {
+    function setBaseSaFromOption(option, sourceLabel, detailText = "") {
       saSelect.value = option.value;
       baseSaFreq = option.frequency;
       settings.saValue = option.value;
       persistSettings();
+      updateSaInfoLine(option, detailText);
       setStatus(`${sourceLabel}: ${option.noteName} (${option.frequency.toFixed(2)} Hz).`);
     }
 
     function applyModeTip(mode) {
       if (mode === "free") {
-        setTipLine("Tip: Free Sing lets you explore your notes without targets.");
+        setTipLine("Sing one steady note and watch the meter respond.");
       } else if (mode === "drill") {
-        setTipLine("Tip: Guided Drill moves to the next note after a clean hold.");
+        setTipLine("Follow each target note and hold it clearly.");
       } else {
-        setTipLine("Tip: 60s Challenge is fast and fun. Collect as many stars as you can.");
+        setTipLine("Hit the target quickly and keep the streak going.");
       }
     }
 
@@ -588,16 +730,18 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       drillTarget.textContent = "-";
       drillProgress.textContent = `0/${DRILL_SEQUENCE.length}`;
       setDrillFill(0);
-      drillBtn.textContent = "Start Drill";
+      drillBtn.textContent = "Start Guided Practice";
       drillBtn.classList.remove("active");
+      updateGuidedStage("", "Ready");
     }
 
     function resetChallengeUi() {
       challengeTarget.textContent = "-";
       challengeTime.textContent = "01:00";
       setChallengeFill(0);
-      challengeBtn.textContent = "Start Challenge";
+      challengeBtn.textContent = "Start 1-Minute Challenge";
       challengeBtn.classList.remove("active");
+      updateGuidedStage("", "Ready");
     }
 
     function setDrillStep(index) {
@@ -610,6 +754,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       setDrillFill(0);
       drillHoldStartAt = 0;
       setStatus(`Drill: sing ${step.name} and hold in tune.`);
+      updateGuidedStage("", "Listening");
       playReference(step.offset).catch((error) => console.error(error));
     }
 
@@ -619,6 +764,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       setChallengeFill(0);
       challengeHoldStartAt = 0;
       setStatus(`Challenge: hit ${step.name} and hold.`);
+      updateGuidedStage("", "Listening");
       playReference(step.offset).catch((error) => console.error(error));
     }
 
@@ -628,12 +774,12 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       drillHoldStartAt = 0;
       drillStepLockUntil = 0;
       resetDrillUi();
-      setStatus("Drill complete. Great job.");
-      feedbackLabel.textContent = "Drill complete";
+      setStatus("Guided practice complete. Great job.");
+      feedbackLabel.textContent = "Practice Complete";
       feedbackLabel.style.color = "var(--success)";
       syncControlState();
       syncViewFlags();
-      showSummary("Guided Drill Complete");
+      showSummary("Guided Sargam Complete");
     }
 
     function stopDrill(statusText = "") {
@@ -650,7 +796,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       }
       syncControlState();
       syncViewFlags();
-      showSummary("Drill Stopped");
+      showSummary("Guided Practice Stopped");
     }
 
     async function toggleDrill() {
@@ -663,7 +809,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
         stopChallenge("Challenge stopped.");
       }
       if (isSaCalibrating) {
-        setStatus("Finish Find My Sa first, then start drill.");
+        setStatus("Set your Sa first, then start guided practice.");
         return;
       }
 
@@ -676,8 +822,8 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       drillStepIndex = 0;
       drillHoldStartAt = 0;
       drillStepLockUntil = 0;
-      resetSessionMetrics("Guided Drill");
-      drillBtn.textContent = "Stop Drill";
+      resetSessionMetrics("Guided Sargam");
+      drillBtn.textContent = "Stop Guided Practice";
       drillBtn.classList.add("active");
       setDrillStep(drillStepIndex);
       syncControlState();
@@ -697,10 +843,9 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       setStatus("Challenge complete. Great work.");
       feedbackLabel.textContent = "Challenge complete";
       feedbackLabel.style.color = "var(--success)";
-      markQuickStep("challenge", true);
       syncControlState();
       syncViewFlags();
-      showSummary("60-Second Challenge Complete");
+      showSummary("1-Minute Challenge Complete");
     }
 
     function stopChallenge(statusText = "") {
@@ -731,7 +876,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
         stopDrill("Drill stopped.");
       }
       if (isSaCalibrating) {
-        setStatus("Finish Find My Sa first, then start challenge.");
+        setStatus("Set your Sa first, then start the challenge.");
         return;
       }
 
@@ -745,11 +890,10 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       challengeHoldStartAt = 0;
       challengeStepLockUntil = 0;
       challengeEndsAt = performance.now() + CHALLENGE_DURATION_MS;
-      resetSessionMetrics("60s Challenge");
+      resetSessionMetrics("1-Minute Challenge");
       challengeBtn.textContent = "Stop Challenge";
       challengeBtn.classList.add("active");
       setChallengeStep(challengeStepIndex);
-      markQuickStep("challenge", true);
       syncControlState();
       syncViewFlags();
     }
@@ -847,9 +991,10 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       syncControlState();
     }
 
-    function applySaFromFrequency(targetFrequency, sourceLabel) {
+    function applySaFromFrequency(targetFrequency, sourceLabel, contextLabel = "Detected note") {
       const suggested = nearestSaOption(targetFrequency);
-      setBaseSaFromOption(suggested, sourceLabel);
+      const difference = centsBetween(targetFrequency, suggested.frequency);
+      setBaseSaFromOption(suggested, sourceLabel, describeSaOffset(difference, contextLabel));
       resetLiveFeedback(`Base Sa set to ${suggested.noteName}.`);
     }
 
@@ -872,11 +1017,12 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       findSaBtn.disabled = true;
       findSaBtn.classList.add("busy");
       findSaBtn.textContent = "Listening...";
-      setStatus("Finding Sa. Sing one comfortable steady note.");
+      setStatus("Sing one comfortable note and hold it steady.");
       feedbackLabel.textContent = "Calibrating...";
       feedbackLabel.style.color = "var(--muted)";
       meterTarget.classList.remove("glow");
       onPitchStartTime = null;
+      updateGuidedStage("", "Calibrating");
       syncControlState();
       syncViewFlags();
     }
@@ -886,8 +1032,8 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       resetCalibrationButton();
 
       if (calibrationSamples.length < CALIBRATION_MIN_SAMPLES) {
-        setStatus("Could not detect clearly. Try Find My Sa again in a quieter room.");
-        feedbackLabel.textContent = "Not enough stable pitch data";
+        setStatus("We could not hear a steady note clearly. Try again in a quieter room.");
+        feedbackLabel.textContent = "We need a steadier note";
         feedbackLabel.style.color = "var(--off)";
         return;
       }
@@ -901,29 +1047,30 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       }
 
       const suggested = nearestSaOption(stableFrequency);
-      setBaseSaFromOption(suggested, "Suggested Sa");
+      const difference = centsBetween(stableFrequency, suggested.frequency);
+      setBaseSaFromOption(suggested, "Suggested Sa", describeSaOffset(difference, "Your calibration note"));
       markQuickStep("sa", true);
 
-      const difference = centsBetween(stableFrequency, suggested.frequency);
       const direction =
         difference > 15 ? "a little high" :
         difference < -15 ? "a little low" :
         "very close";
 
-      feedbackLabel.textContent = `Set to ${suggested.noteName}. Your note was ${direction}.`;
+      feedbackLabel.textContent = "Sa Ready";
       feedbackLabel.style.color = "var(--success)";
       setSwaraLabel("-", false);
       meterIndicator.style.bottom = "50%";
       meterIndicator.style.backgroundColor = "#1b2b3b";
       meterTarget.classList.remove("glow");
       onPitchStartTime = null;
+      setStatus(`Nice. Your Sa is set to ${suggested.noteName}. Your note was ${direction}.`);
       syncControlState();
       syncViewFlags();
     }
 
     function useCurrentNoteAsSa() {
       if (!isListening) {
-        setStatus("Start listening first, then sing and tap Use Current as Sa.");
+        setStatus("Start listening first, then sing and tap Set This as Sa.");
         return;
       }
       if (!lastStableFrequency) {
@@ -937,7 +1084,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
         stopChallenge("Challenge stopped after Sa update.");
       }
       markQuickStep("sa", true);
-      applySaFromFrequency(lastStableFrequency, "Sa set from current note");
+      applySaFromFrequency(lastStableFrequency, "Sa set from current note", "Your current note");
     }
 
     function getAudioContext() {
@@ -979,7 +1126,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
         micBtn.classList.remove("denied");
         micBtn.classList.add("listening");
         micBtn.textContent = "Listening";
-        setStatus("Mic active. Start singing.");
+        setStatus(settings.onboarded ? "Sing and hold one steady note." : "Mic ready. Next, find your Sa.");
         markQuickStep("mic", true);
         lastPitchAt = performance.now();
         lastVoiceAt = lastPitchAt;
@@ -1082,6 +1229,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
 
       const displayCents = clamp(centsDifference, -WARN_CENTS, WARN_CENTS);
       renderPitch(nearest.name, centsDifference, displayCents);
+      updateGuidedStage(nearest.name);
       const now = performance.now();
       registerPitchTrend(nearest.name, centsDifference, now);
       updateDrillFromPitch(foldedSemitones, now);
@@ -1090,23 +1238,30 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
 
     function renderPitch(swaraName, centsRaw, centsDisplay) {
       setSwaraLabel(swaraName, true);
-      if (!isSaCalibrating && !isDrillActive && !isChallengeActive) {
-        setStatus("Mic active. Start singing.");
-      }
+      const isLivePractice = !isSaCalibrating && !isDrillActive && !isChallengeActive;
 
       const bottomPercent = 50 + centsDisplay;
       meterIndicator.style.bottom = `${bottomPercent}%`;
 
       if (Math.abs(centsRaw) <= onPitchCents) {
-        feedbackLabel.textContent = "On Pitch";
         feedbackLabel.style.color = "var(--success)";
         meterIndicator.style.backgroundColor = "var(--success)";
 
         if (!onPitchStartTime) {
           onPitchStartTime = performance.now();
         }
-        if (performance.now() - onPitchStartTime >= STABILITY_THRESHOLD_MS) {
+        const heldMs = performance.now() - onPitchStartTime;
+        if (heldMs >= STABILITY_THRESHOLD_MS) {
+          feedbackLabel.textContent = "Hold Steady";
           meterTarget.classList.add("glow");
+          if (isLivePractice) {
+            setStatus(`Lovely. Keep holding ${swaraName}.`);
+          }
+        } else {
+          feedbackLabel.textContent = swaraName === "Sa" ? "On Sa" : `On ${swaraName}`;
+          if (isLivePractice) {
+            setStatus(`Good. You're on ${swaraName}.`);
+          }
         }
         return;
       }
@@ -1115,13 +1270,19 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       meterTarget.classList.remove("glow");
 
       if (Math.abs(centsRaw) > WARN_CENTS) {
-        feedbackLabel.textContent = centsRaw > 0 ? "High (Off Target)" : "Low (Off Target)";
+        feedbackLabel.textContent = centsRaw > 0 ? "Too High" : "Too Low";
         feedbackLabel.style.color = "var(--off)";
         meterIndicator.style.backgroundColor = "var(--off)";
+        if (isLivePractice) {
+          setStatus(centsRaw > 0 ? `Ease down a little toward ${swaraName}.` : `Lift a little toward ${swaraName}.`);
+        }
       } else {
-        feedbackLabel.textContent = centsRaw > 0 ? "High" : "Low";
+        feedbackLabel.textContent = centsRaw > 0 ? "A Little High" : "A Little Low";
         feedbackLabel.style.color = "var(--warning)";
         meterIndicator.style.backgroundColor = "var(--warning)";
+        if (isLivePractice) {
+          setStatus(centsRaw > 0 ? `Almost there. Ease down slightly.` : `Almost there. Lift slightly.`);
+        }
       }
     }
 
@@ -1138,10 +1299,15 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       }
       if (isSaCalibrating) {
         feedbackLabel.textContent = "Calibrating...";
+        setStatus("Sing one comfortable note and hold it steady.");
       } else {
-        feedbackLabel.textContent = "Hold a steady note...";
+        feedbackLabel.textContent = "Sing a steady note";
+        if (!isDrillActive && !isChallengeActive) {
+          setStatus("Sing and hold one steady note.");
+        }
       }
       feedbackLabel.style.color = "var(--muted)";
+      updateGuidedStage("", isSaCalibrating ? "Calibrating" : ((isDrillActive || isChallengeActive) ? "Listening" : "Ready"));
     }
 
     function resetLiveFeedback(labelText) {
@@ -1153,6 +1319,7 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       meterTarget.classList.remove("glow");
       onPitchStartTime = null;
       recentFrequencies = [];
+      updateGuidedStage("", isSaCalibrating ? "Calibrating" : ((isDrillActive || isChallengeActive) ? "Listening" : "Ready"));
     }
 
     function getReferenceFrequency(offset) {
@@ -1214,13 +1381,14 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       };
     }
 
-    function runQuickChallengeStart() {
-      setActiveMode("challenge");
-      toggleChallenge().catch((error) => console.error(error));
-      quickStartNote.textContent = "Challenge started. Collect as many stars as you can.";
-    }
-
     function initializeUiFromSettings() {
+      if (settings.saValue) {
+        quickSteps.sa = true;
+        if (!settings.onboarded) {
+          settings.onboarded = true;
+          persistSettings();
+        }
+      }
       applyDifficulty(settings.difficulty, false);
       applyReferenceDuration(settings.referenceDurationSec, false);
       setActiveMode(settings.activeMode, false);
@@ -1232,10 +1400,12 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       resetDrillUi();
       resetChallengeUi();
       updateModePill();
+      updateSaInfoLine(getSelectedSaOption());
       syncControlState();
       syncViewFlags();
     }
 
+    buildGuidedStepRow();
     populateSaOptions();
     initializeUiFromSettings();
 
@@ -1259,13 +1429,27 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
         setActiveMode(button.dataset.mode);
       });
     });
-    quickMicBtn.addEventListener("click", () => {
-      startListening().catch((error) => console.error(error));
+    quickPrimaryBtn.addEventListener("click", () => {
+      if (!quickSteps.mic) {
+        startListening().catch((error) => console.error(error));
+        return;
+      }
+      if (!quickSteps.sa) {
+        beginSaCalibration().catch((error) => console.error(error));
+      }
     });
-    quickSaBtn.addEventListener("click", () => {
-      beginSaCalibration().catch((error) => console.error(error));
+    quickSecondaryBtn.addEventListener("click", () => {
+      isManualSaChooserOpen = true;
+      settingsPanel.classList.remove("hidden");
+      settingsPanel.open = true;
+      setStatus("Choose your keyboard Sa below, then start singing.");
+      syncViewFlags();
+      saSelect.focus();
     });
-    quickChallengeBtn.addEventListener("click", runQuickChallengeStart);
+    settingsPanel.addEventListener("toggle", () => {
+      isManualSaChooserOpen = settingsPanel.open;
+      syncViewFlags();
+    });
 
     saSelect.addEventListener("change", () => {
       if (isDrillActive) {
@@ -1276,7 +1460,8 @@ const pitchfinderReadyPromise = import("https://esm.sh/pitchfinder@2.3.0")
       }
       const selected = getSelectedSaOption();
       setBaseSaFromOption(selected, "Base Sa changed");
-      resetLiveFeedback("Sa changed. Sing to tune.");
+      markQuickStep("sa", true);
+      resetLiveFeedback(isOnboardingActive() ? "Sa selected. Start listening." : "Sa changed. Sing to tune.");
     });
 
     referenceButtons.forEach((button) => {

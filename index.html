@@ -14,26 +14,39 @@
       <p class="subhead">Find your Sa, sing confidently, and tune in real time.</p>
     </header>
 
-    <section id="quickstart-panel" class="quickstart hidden" aria-label="Quick start">
-      <p class="quickstart-title">Quick Start (First Time)</p>
-      <div class="quickstart-actions">
-        <button id="qs-mic-btn" class="quick-btn" type="button">1. Mic Access</button>
-        <button id="qs-sa-btn" class="quick-btn" type="button">2. Find Sa</button>
-        <button id="qs-challenge-btn" class="quick-btn" type="button">3. Try 60s</button>
-      </div>
-      <p id="quickstart-note" class="quick-note">Follow these 3 steps to get started quickly.</p>
+    <section id="quickstart-panel" class="quickstart hidden" aria-label="Get started">
+      <p class="quickstart-title">Let's Find Your Sa</p>
+      <p id="quickstart-lead" class="quickstart-lead">We'll guide you one small step at a time.</p>
+      <button id="qs-primary-btn" class="mic-btn quick-primary" type="button">Start Listening</button>
+      <button id="qs-secondary-btn" class="quick-link-btn" type="button">Choose Sa Manually</button>
+      <p id="quickstart-note" class="quick-note">Step 1 of 2: allow microphone access.</p>
     </section>
 
-    <section class="mode-tabs" aria-label="Practice modes">
-      <button id="mode-free-btn" class="mode-btn active" data-mode="free" type="button">Free Sing</button>
-      <button id="mode-drill-btn" class="mode-btn" data-mode="drill" type="button">Guided Drill</button>
-      <button id="mode-challenge-btn" class="mode-btn" data-mode="challenge" type="button">60s Challenge</button>
+    <section id="mode-tabs" class="mode-tabs" aria-label="Practice modes">
+      <button id="mode-free-btn" class="mode-btn active" data-mode="free" type="button">Live Practice</button>
+      <button id="mode-drill-btn" class="mode-btn" data-mode="drill" type="button">Guided Sargam</button>
+      <button id="mode-challenge-btn" class="mode-btn" data-mode="challenge" type="button">1-Minute Challenge</button>
     </section>
 
     <section class="live-stage" aria-label="Live pitch stage">
-      <p id="mode-pill" class="mode-pill">Free Sing Mode</p>
-      <p id="status-line" class="status-line">Press Start or Find My Sa to begin.</p>
-      <p id="tip-line" class="tip-line">Tip: Tap Find My Sa, then start with Free Sing.</p>
+      <p id="mode-pill" class="mode-pill">Live Practice</p>
+      <p id="status-line" class="status-line">Start listening to begin.</p>
+      <p id="tip-line" class="tip-line">Sing and hold one steady note.</p>
+      <p id="sa-info-line" class="sa-info-line">Keyboard Sa: C#4 (Kali 1) at 277.18 Hz.</p>
+
+      <section id="guided-stage" class="guided-stage hidden" aria-label="Guided swara tracker">
+        <div class="guided-readout">
+          <div class="guided-pill guided-pill-target">
+            <span class="guided-pill-label">Target</span>
+            <span id="guided-target-pill" class="guided-pill-value">Sa</span>
+          </div>
+          <div class="guided-pill guided-pill-current">
+            <span class="guided-pill-label">You're Singing</span>
+            <span id="guided-current-pill" class="guided-pill-value">Waiting</span>
+          </div>
+        </div>
+        <div id="guided-step-row" class="guided-step-row" aria-label="Guided swara steps"></div>
+      </section>
 
       <div id="swara-label" class="swara">-</div>
       <div id="feedback-label" class="feedback">Waiting</div>
@@ -44,21 +57,21 @@
           <div id="meter-indicator" class="indicator"></div>
         </div>
         <div class="meter-labels">
-          <span>Low</span>
-          <span>High</span>
+          <span>Too Low</span>
+          <span>Too High</span>
         </div>
       </section>
     </section>
 
-    <section class="action-buttons" aria-label="Primary controls">
+    <section id="action-buttons" class="action-buttons" aria-label="Primary controls">
       <button id="mic-btn" class="mic-btn" type="button">Start Listening</button>
       <button id="find-sa-btn" class="assist-btn" type="button">Find My Sa</button>
-      <button id="set-current-sa-btn" class="assist-btn" type="button">Use Current as Sa</button>
+      <button id="set-current-sa-btn" class="assist-btn" type="button">Set This as Sa</button>
     </section>
 
     <section class="context-panels" aria-label="Mode panel">
       <section id="drill-panel" class="drill-panel hidden" aria-label="Guided drill">
-        <p class="drill-title">Guided Sargam Drill</p>
+        <p class="drill-title">Guided Sargam</p>
         <div class="drill-meta">
           <span>Target: <span id="drill-target" class="drill-target">-</span></span>
           <span id="drill-progress" class="drill-progress">0/7</span>
@@ -66,11 +79,11 @@
         <div class="drill-bar">
           <div id="drill-fill" class="drill-fill"></div>
         </div>
-        <button id="drill-btn" class="drill-btn" type="button">Start Drill</button>
+        <button id="drill-btn" class="drill-btn" type="button">Start Guided Practice</button>
       </section>
 
       <section id="challenge-panel" class="drill-panel hidden" aria-label="60 second challenge">
-        <p class="drill-title">60-Second Challenge</p>
+        <p class="drill-title">1-Minute Challenge</p>
         <div class="drill-meta">
           <span>Target: <span id="challenge-target" class="drill-target">-</span></span>
           <span id="challenge-time" class="drill-progress">01:00</span>
@@ -78,11 +91,11 @@
         <div class="drill-bar">
           <div id="challenge-fill" class="drill-fill"></div>
         </div>
-        <button id="challenge-btn" class="drill-btn" type="button">Start Challenge</button>
+        <button id="challenge-btn" class="drill-btn" type="button">Start 1-Minute Challenge</button>
       </section>
     </section>
 
-    <section class="stats-strip" aria-label="Session stats">
+    <section id="stats-strip" class="stats-strip" aria-label="Session stats">
       <div id="stars-pill" class="stat-pill">Stars: 0</div>
       <div id="streak-pill" class="stat-pill">Streak: 0</div>
       <div id="time-pill" class="stat-pill">Time: 00:00</div>
@@ -95,8 +108,8 @@
       <p id="summary-body" class="summary-body">Your practice summary will appear here.</p>
     </section>
 
-    <details class="settings-panel" aria-label="Tuning settings">
-      <summary>Tune Settings</summary>
+    <details id="settings-panel" class="settings-panel" aria-label="Tuning settings">
+      <summary>Adjust Practice</summary>
       <section class="controls">
         <div class="settings-grid">
           <div>
@@ -121,18 +134,21 @@
       </section>
     </details>
 
-    <section class="reference" aria-label="Reference notes">
-      <p class="reference-title">Reference Notes</p>
-      <div class="note-grid">
-        <button class="note-btn" type="button" data-offset="0">Sa</button>
-        <button class="note-btn" type="button" data-offset="2">Re</button>
-        <button class="note-btn" type="button" data-offset="4">Ga</button>
-        <button class="note-btn" type="button" data-offset="5">Ma</button>
-        <button class="note-btn" type="button" data-offset="7">Pa</button>
-        <button class="note-btn" type="button" data-offset="9">Dha</button>
-        <button class="note-btn" type="button" data-offset="11">Ni</button>
-      </div>
-    </section>
+    <details id="reference-panel" class="reference-panel" aria-label="Reference notes">
+      <summary>Hear Reference Notes</summary>
+      <section class="reference-inner">
+        <p class="reference-title">Tap a note to hear it</p>
+        <div class="note-grid">
+          <button class="note-btn" type="button" data-offset="0">Sa</button>
+          <button class="note-btn" type="button" data-offset="2">Re</button>
+          <button class="note-btn" type="button" data-offset="4">Ga</button>
+          <button class="note-btn" type="button" data-offset="5">Ma</button>
+          <button class="note-btn" type="button" data-offset="7">Pa</button>
+          <button class="note-btn" type="button" data-offset="9">Dha</button>
+          <button class="note-btn" type="button" data-offset="11">Ni</button>
+        </div>
+      </section>
+    </details>
   </main>
 
     <script src="app.js" defer></script>
