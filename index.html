@@ -3,23 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sargam Practice App (V1)</title>
-    <link rel="stylesheet" href="styles.css">
+  <title>Sargam Practice App (V3)</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="card">
-    <header class="hero">
-      <p class="hero-kicker">Practice Coach</p>
-      <h1 class="headline">Sargam Practice</h1>
-      <p class="subhead">Find your Sa, sing confidently, and tune in real time.</p>
+  <main class="app-shell">
+    <header class="app-topbar">
+      <div class="topbar-copy">
+        <p id="app-kicker" class="app-kicker">Welcome</p>
+        <h1 id="app-title" class="app-title">Sargam Practice</h1>
+      </div>
+      <button id="settings-toggle-btn" class="icon-btn hidden" type="button" aria-label="Adjust practice">Adjust</button>
     </header>
 
-    <section id="quickstart-panel" class="quickstart hidden" aria-label="Get started">
-      <p class="quickstart-title">Let's Find Your Sa</p>
-      <p id="quickstart-lead" class="quickstart-lead">We'll guide you one small step at a time.</p>
-      <button id="qs-primary-btn" class="mic-btn quick-primary" type="button">Start Listening</button>
-      <button id="qs-secondary-btn" class="quick-link-btn" type="button">Choose Sa Manually</button>
-      <p id="quickstart-note" class="quick-note">Step 1 of 2: allow microphone access.</p>
+    <section id="quickstart-panel" class="setup-panel hidden" aria-label="Welcome">
+      <p class="quickstart-title">Welcome to</p>
+      <h2 class="setup-headline">Sargam Practice</h2>
+      <p id="quickstart-lead" class="quickstart-lead">We'll help you find your Sa.</p>
+      <p id="quickstart-note" class="quick-note">Start listening when you're ready.</p>
     </section>
 
     <section id="mode-tabs" class="mode-tabs" aria-label="Practice modes">
@@ -28,70 +29,106 @@
       <button id="mode-challenge-btn" class="mode-btn" data-mode="challenge" type="button">1-Minute Challenge</button>
     </section>
 
-    <section class="live-stage" aria-label="Live pitch stage">
-      <p id="mode-pill" class="mode-pill">Live Practice</p>
-      <p id="status-line" class="status-line">Start listening to begin.</p>
-      <p id="tip-line" class="tip-line">Sing and hold one steady note.</p>
-      <p id="sa-info-line" class="sa-info-line">Keyboard Sa: C#4 (Kali 1) at 277.18 Hz.</p>
-
-      <section id="guided-stage" class="guided-stage hidden" aria-label="Guided swara tracker">
-        <div class="guided-readout">
-          <div class="guided-pill guided-pill-target">
-            <span class="guided-pill-label">Target</span>
-            <span id="guided-target-pill" class="guided-pill-value">Sa</span>
-          </div>
-          <div class="guided-pill guided-pill-current">
-            <span class="guided-pill-label">You're Singing</span>
-            <span id="guided-current-pill" class="guided-pill-value">Waiting</span>
-          </div>
-        </div>
-        <div id="guided-step-row" class="guided-step-row" aria-label="Guided swara steps"></div>
+    <section class="stage-shell">
+      <section id="find-sa-panel" class="flow-panel hidden" aria-label="Find My Sa">
+        <p id="flow-kicker" class="flow-kicker">Find My Sa</p>
+        <h2 id="flow-title" class="flow-title">Sing one steady note.</h2>
+        <p id="flow-copy" class="flow-copy">We'll listen for the keyboard Sa that best fits your voice.</p>
+        <p id="flow-chip" class="flow-chip hidden">Listening...</p>
       </section>
 
-      <div id="swara-label" class="swara">-</div>
-      <div id="feedback-label" class="feedback">Waiting</div>
-
-      <section class="meter-wrap" aria-label="Pitch meter">
-        <div class="meter">
-          <div id="meter-target" class="meter-target"></div>
-          <div id="meter-indicator" class="indicator"></div>
-        </div>
-        <div class="meter-labels">
-          <span>Too Low</span>
-          <span>Too High</span>
+      <section id="sa-confirm-panel" class="confirm-panel hidden" aria-label="Suggested Sa">
+        <p id="sa-confirm-title" class="confirm-title">You found your Sa</p>
+        <p id="sa-confirm-body" class="confirm-body">Set C#4 as your Sa?</p>
+        <p id="sa-confirm-detail" class="confirm-detail">Your note was very close to this keyboard key.</p>
+        <div class="confirm-actions">
+          <button id="sa-confirm-btn" class="confirm-btn" type="button">Set as Sa</button>
+          <button id="sa-retry-btn" class="confirm-link-btn" type="button">Try Again</button>
         </div>
       </section>
-    </section>
 
-    <section id="action-buttons" class="action-buttons" aria-label="Primary controls">
-      <button id="mic-btn" class="mic-btn" type="button">Start Listening</button>
-      <button id="find-sa-btn" class="assist-btn" type="button">Find My Sa</button>
-      <button id="set-current-sa-btn" class="assist-btn" type="button">Set This as Sa</button>
+      <section class="live-stage" aria-label="Live pitch stage">
+        <div class="stage-head">
+          <p id="mode-pill" class="mode-pill">Live Practice</p>
+          <p id="status-line" class="status-line">Start listening to begin.</p>
+          <p id="tip-line" class="tip-line">Sing one steady note and watch the meter respond.</p>
+          <p id="sa-info-line" class="sa-info-line">Keyboard Sa: C#4 (Kali 1) at 277.18 Hz.</p>
+        </div>
+
+        <section id="challenge-hud" class="challenge-hud hidden" aria-label="Challenge status">
+          <div class="challenge-hud-pill">
+            <span class="challenge-hud-label">Time</span>
+            <strong id="challenge-hud-time" class="challenge-hud-value">01:00</strong>
+          </div>
+          <div class="challenge-hud-pill">
+            <span class="challenge-hud-label">Stars</span>
+            <strong id="challenge-hud-stars" class="challenge-hud-value">0</strong>
+          </div>
+          <div class="challenge-hud-pill">
+            <span class="challenge-hud-label">Streak</span>
+            <strong id="challenge-hud-streak" class="challenge-hud-value">0</strong>
+          </div>
+        </section>
+
+        <section id="guided-stage" class="guided-stage hidden" aria-label="Guided swara tracker">
+          <div class="guided-readout">
+            <div class="guided-pill guided-pill-target">
+              <span class="guided-pill-label">Target</span>
+              <span id="guided-target-pill" class="guided-pill-value">Sa</span>
+            </div>
+            <div class="guided-pill guided-pill-current">
+              <span class="guided-pill-label">You're Singing</span>
+              <span id="guided-current-pill" class="guided-pill-value">Waiting</span>
+            </div>
+          </div>
+          <div id="guided-step-row" class="guided-step-row" aria-label="Guided swara steps"></div>
+        </section>
+
+        <div id="swara-label" class="swara">-</div>
+        <div id="feedback-label" class="feedback">Waiting</div>
+
+        <section class="meter-wrap" aria-label="Pitch meter">
+          <div class="meter">
+            <div id="meter-target" class="meter-target"></div>
+            <div id="meter-indicator" class="indicator"></div>
+          </div>
+          <div class="meter-labels">
+            <span>Too Low</span>
+            <span>Too High</span>
+          </div>
+        </section>
+      </section>
     </section>
 
     <section class="context-panels" aria-label="Mode panel">
-      <section id="drill-panel" class="drill-panel hidden" aria-label="Guided drill">
-        <p class="drill-title">Guided Sargam</p>
-        <div class="drill-meta">
-          <span>Target: <span id="drill-target" class="drill-target">-</span></span>
-          <span id="drill-progress" class="drill-progress">0/7</span>
+      <section id="drill-panel" class="mode-panel hidden" aria-label="Guided practice">
+        <div class="mode-panel-head">
+          <p class="mode-panel-title">Guided Sargam</p>
+          <span id="drill-progress" class="mode-panel-progress">0/7</span>
+        </div>
+        <p class="mode-panel-copy">Follow each target note and hold it clearly.</p>
+        <div class="mode-panel-meta">
+          <span>Target <strong id="drill-target" class="drill-target">-</strong></span>
         </div>
         <div class="drill-bar">
           <div id="drill-fill" class="drill-fill"></div>
         </div>
-        <button id="drill-btn" class="drill-btn" type="button">Start Guided Practice</button>
+        <button id="drill-btn" class="mode-panel-btn hidden" type="button">Start Guided Practice</button>
       </section>
 
-      <section id="challenge-panel" class="drill-panel hidden" aria-label="60 second challenge">
-        <p class="drill-title">1-Minute Challenge</p>
-        <div class="drill-meta">
-          <span>Target: <span id="challenge-target" class="drill-target">-</span></span>
-          <span id="challenge-time" class="drill-progress">01:00</span>
+      <section id="challenge-panel" class="mode-panel hidden" aria-label="1 minute challenge">
+        <div class="mode-panel-head">
+          <p class="mode-panel-title">Ready When You Are</p>
+          <span id="challenge-time" class="mode-panel-progress">01:00</span>
         </div>
-        <div class="drill-bar">
+        <p class="mode-panel-copy">You'll get one minute to hit the target notes and build a streak.</p>
+        <div id="challenge-meta" class="mode-panel-meta">
+          <span>Target <strong id="challenge-target" class="drill-target">-</strong></span>
+        </div>
+        <div id="challenge-bar-wrap" class="drill-bar">
           <div id="challenge-fill" class="drill-fill"></div>
         </div>
-        <button id="challenge-btn" class="drill-btn" type="button">Start 1-Minute Challenge</button>
+        <button id="challenge-btn" class="mode-panel-btn hidden" type="button">Start 1-Minute Challenge</button>
       </section>
     </section>
 
@@ -108,8 +145,17 @@
       <p id="summary-body" class="summary-body">Your practice summary will appear here.</p>
     </section>
 
-    <details id="settings-panel" class="settings-panel" aria-label="Tuning settings">
-      <summary>Adjust Practice</summary>
+    <div id="sheet-backdrop" class="sheet-backdrop hidden"></div>
+
+    <aside id="settings-panel" class="settings-sheet hidden" aria-label="Adjust practice">
+      <header class="sheet-header">
+        <div class="sheet-copy">
+          <p class="sheet-kicker">Adjust Practice</p>
+          <h2 class="sheet-title">Tune Your Session</h2>
+        </div>
+        <button id="sheet-close-btn" class="sheet-close-btn" type="button" aria-label="Close settings">Close</button>
+      </header>
+
       <section class="controls">
         <div class="settings-grid">
           <div>
@@ -132,12 +178,10 @@
           </div>
         </div>
       </section>
-    </details>
 
-    <details id="reference-panel" class="reference-panel" aria-label="Reference notes">
-      <summary>Hear Reference Notes</summary>
-      <section class="reference-inner">
-        <p class="reference-title">Tap a note to hear it</p>
+      <section id="reference-panel" class="reference-panel" aria-label="Reference notes">
+        <p class="reference-title">Hear Reference Notes</p>
+        <p class="reference-copy">Tap a note to hear the target again.</p>
         <div class="note-grid">
           <button class="note-btn" type="button" data-offset="0">Sa</button>
           <button class="note-btn" type="button" data-offset="2">Re</button>
@@ -148,10 +192,15 @@
           <button class="note-btn" type="button" data-offset="11">Ni</button>
         </div>
       </section>
-    </details>
+    </aside>
+
+    <section id="action-buttons" class="bottom-dock" aria-label="Primary controls">
+      <button id="mic-btn" class="mic-btn dock-primary" type="button">Start Listening</button>
+      <button id="find-sa-btn" class="assist-btn dock-secondary" type="button">Find My Sa</button>
+      <button id="set-current-sa-btn" class="assist-btn dock-secondary hidden" type="button">Set This as Sa</button>
+    </section>
   </main>
 
-    <script src="app.js" defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
-
